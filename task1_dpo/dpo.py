@@ -13,17 +13,40 @@ def dpo_loss(
 ):
     """Return scalar DPO loss plus lightweight diagnostics.
 
-    Validate this implementation against the equation in the assignment manual before using it.
+    Validate this implementation against the equation in the assignment manual
+    before using it.
     """
-    policy_margin = policy_chosen_logp - policy_rejected_logp
-    ref_margin = ref_chosen_logp - ref_rejected_logp
 
-    # Starter implementation: students must validate the objective carefully.
-    logits = beta * (policy_margin + ref_margin)
+    policy_margin = (
+        policy_chosen_logp
+        - policy_rejected_logp
+    )
 
-    loss = -F.logsigmoid(logits).mean()
+    ref_margin = (
+        ref_chosen_logp
+        - ref_rejected_logp
+    )
+
+    # FIX (planted defect): the DPO logit is beta * [policy log-ratio margin MINUS the
+    # reference log-ratio margin], i.e. beta * [(log pi(y+) - log ref(y+)) - (log pi(y-) - log ref(y-))].
+    # The starter added ref_margin, which rewards the policy for agreeing with whatever the
+    # reference already prefers instead of measuring movement *relative* to the reference.
+    logits = beta * (
+        policy_margin - ref_margin
+    )
+
+    loss = -F.logsigmoid(
+        logits
+    ).mean()
+
     return loss, {
-        "logit_mean": logits.detach().mean(),
-        "policy_margin_mean": policy_margin.detach().mean(),
-        "preference_accuracy": (policy_margin > 0).float().mean().detach(),
+        "logit_mean":
+            logits.detach().mean(),
+
+        "policy_margin_mean":
+            policy_margin.detach().mean(),
+
+        "preference_accuracy": (
+            (policy_margin - ref_margin) > 0
+        ).float().mean().detach(),
     }

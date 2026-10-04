@@ -2,6 +2,61 @@
 
 <!-- FINAL_STUDENT_SETUP -->
 
+---
+# Student implementation notes (27100150)
+
+Run everything from the repository root. GPU runs were done with `notebooks/run_on_gpu.ipynb`
+(a thin driver that only calls the modules below; `outputs/` and `results/` are kept on persistent storage).
+
+## Corrected objective defects (Tasks 1–3)
+
+| File | Starter behaviour | Correction |
+|---|---|---|
+| `task1_dpo/dpo.py` | logit `beta * (policy_margin + ref_margin)` | `beta * (policy_margin - ref_margin)` (log-ratio margin relative to the reference) |
+| `task2_ppo/ppo.py` | `torch.maximum(surr1, surr2)` | `torch.minimum(surr1, surr2)` (pessimistic clipped surrogate) |
+| `task3_grpo/grpo.py` | mean/std over the whole batch, `group_ids` ignored | mean/std computed within each prompt group; zero-variance groups get zero advantage |
+
+`python -m tests.test_objectives` checks each corrected helper against a direct transcription of
+the manual's equation on hand-built tensors (the checks fail on the starter versions).
+
+## Task 1 – DPO: exact commands
+
+```bash
+python -m task1_dpo.train --config configs/dpo.yaml --run-name standard          # Step 1 training (1 epoch)
+python -m task1_dpo.evaluate --config configs/dpo.yaml --adapter none --name sft  # SFT reference point
+python -m task1_dpo.evaluate --config configs/dpo.yaml --adapter outputs/task1_dpo/standard --name standard
+python -m task1_dpo.ablate_beta --config configs/dpo.yaml                         # Step 2 (beta forks + table)
+python -m task1_dpo.analyze_length --config configs/dpo.yaml                      # Step 3 (length study)
+python -m task1_dpo.qualitative --config configs/dpo.yaml                         # candidate examples
+```
+
+Implementation choices (identical for every Task 1 condition):
+
+* **Over-long prompts.** The course `encode_prompt_response` (3 Oct update) keeps prompts intact and raises
+  if a prompt alone does not fit in `max_sequence_length=768`. Such pairs are excluded up-front by
+  `task1_dpo.train.filter_fitting_rows`; the excluded `prompt_id`s are saved in each run's
+  `results/task1_dpo/train/<run>/run_config.json` and each eval `summary.json`.
+* **Training.** Fresh LoRA (configs/base.yaml) on Qwen2.5-1.5B-Instruct; the frozen reference is the same
+  network with the adapter disabled. Shuffle order fixed with `torch.Generator().manual_seed(seed)`.
+  Batch 2 x grad-accum 8, AdamW, grad-norm clip 1.0, fp16 base with fp32 LoRA weights and a GradScaler.
+  β forks: first `short_ablation_examples=600` rows of the standard file, otherwise identical.
+* **Held-out preference metrics.** DPO margin with summed response-token log-probs, accuracy = mean(m > 0),
+  held-out DPO loss at the condition's β.
+* **Generation metrics.** Fixed prompt set = first 100 held-out prompts whose rendered prompt is ≤ 512 tokens
+  (IDs saved in `summary.json`) + the 10 word-limit prompts; sampling with configs/base.yaml settings,
+  course seed, `max_generation_tokens=256`. KL = `common.metrics.sampled_kl` pooled over all valid sampled
+  tokens (token-averaged); reward = course reward model (`score_reward_pairs`, prompt truncated from the left
+  if needed); length = generated response tokens (mean, std, IQR).
+
+Outputs: `results/task1_dpo/{train,eval}/...`, `beta_summary.csv`, `length_strata.csv`,
+`length_generation.csv`, `length_dataset_stats.json`, `qualitative_candidates.md`.
+
+## Attribution
+
+Code was written with assistance from an LLM coding assistant (Claude); I reviewed and am responsible for
+every line. No external code was copied. The report text is my own.
+
+
 ## Quick start
 
 ```bash
