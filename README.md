@@ -51,6 +51,42 @@ Implementation choices (identical for every Task 1 condition):
 Outputs: `results/task1_dpo/{train,eval}/...`, `beta_summary.csv`, `length_strata.csv`,
 `length_generation.csv`, `length_dataset_stats.json`, `qualitative_candidates.md`.
 
+## Task 2 – PPO: exact commands
+
+```bash
+python -m task2_ppo.evaluate --config configs/ppo.yaml --adapter checkpoints/ppo_midpoint_policy --name midpoint
+python -m task2_ppo.continue_train --config configs/ppo.yaml --run-name standard     # Step 1 (20 updates)
+python -m task2_ppo.evaluate --config configs/ppo.yaml --adapter outputs/task2_ppo/standard --name standard
+python -m task2_ppo.analyze_clipping --config configs/ppo.yaml                      # Step 2 (cached batch + eps forks)
+python -m task2_ppo.ablate_kl --config configs/ppo.yaml                             # Step 3 (beta_KL forks)
+python -m task2_ppo.summarize --config configs/ppo.yaml                             # tables + qualitative candidates
+```
+
+Implementation choices (shared helpers in `common/rl.py`):
+
+* **Prompts.** RL prompt pools are filtered to prompts whose rendered chat prompt is <= `max_prompt_length` (256)
+  tokens, because `batch_generate` would otherwise cut the prompt from the right (256 of 1,200 training prompts
+  dropped; IDs in `run_config.json`). The kept training prompts are shuffled once with the course seed; update u
+  uses prompts `[u*k, (u+1)*k)`, so every run and fork sees the identical prompt sequence.
+* **Rollout.** Course decoding (T=0.7, top-p 0.9), cap `max_response_length=512`; reward = course RM score, minus
+  `missing_eos_penalty=1.0` when the response never emitted EOS.
+* **Update.** KL-shaped token rewards (`shaped_rewards`, beta_KL), GAE (gamma=1, lambda=0.95) with the critic's
+  values, advantages whitened over valid tokens, `ppo_epochs=2` passes of the corrected clipped loss and the critic
+  MSE (`value_coef=0.5`), separate AdamW optimizers, grad-norm clip 1.0. Dropout is disabled in policy and critic so
+  the ratio is exactly 1 on the first pass. Critic = supplied midpoint value model + fresh LoRA, trainable head in fp32.
+* **Logged per update:** raw/effective reward, sampled KL (token mean and sequence sum), full-distribution entropy,
+  policy/value loss, clip fraction, affected-token fraction (clipped branch active), policy/value grad norms, ratio
+  range, KL(old||new) after the update, critic explained variance before/after, response length, truncation,
+  elapsed time, peak VRAM.
+* **Evaluation.** First 64 eval-pool prompts that fit the prompt cap, one sample each, cap
+  `eval_max_response_length=768`, same seed and decoding for every condition.
+* **Stability statistics for the forks** (`task2_ppo/forks.py`): max per-update KL(old||new), max/min ratio, max
+  policy grad norm, std of the per-update policy loss, mean clip / affected fractions.
+* **Cached clipping study.** The 32 cached rollouts are re-tokenised (text + EOS if terminated; lengths checked
+  against `response_tokens`), advantages come from the cached rewards/values/log-probs, and for each epsilon the
+  midpoint policy takes `ppo_epochs` full-batch steps on that fixed batch; clip/affected fractions and surrogates
+  are measured after every pass, including pass 0 (cache-consistency check).
+
 ## Attribution
 
 Code was written with assistance from an LLM coding assistant (Claude); I reviewed and am responsible for
