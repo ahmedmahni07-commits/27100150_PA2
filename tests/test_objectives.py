@@ -69,7 +69,16 @@ def check_grpo():
     print("GRPO ok: advantages", adv.tolist())
 
 
+def check_versions():
+    import transformers, peft
+    assert transformers.__version__ == "4.57.1", (
+        f"transformers {transformers.__version__} installed; the course pins 4.57.1 "
+        "(5.x changes apply_chat_template outputs used by the supplied judges). Re-run the pip install cell.")
+    print("versions ok: transformers", transformers.__version__, "peft", peft.__version__)
+
+
 if __name__ == "__main__":
+    check_versions()
     check_dpo()
     check_ppo()
     check_grpo()

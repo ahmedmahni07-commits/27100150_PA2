@@ -9,6 +9,7 @@ from torch.optim import AdamW
 from torch.utils.data import DataLoader
 
 from common.data import (
+    chat_prompt_ids,
     encode_prompt_response,
     load_yaml,
     pad_batch,
@@ -37,8 +38,7 @@ def filter_fitting_rows(rows, tokenizer, max_length):
     """
     kept, dropped = [], []
     for row in rows:
-        n = len(tokenizer.apply_chat_template(
-            prompt_messages_from_preference(row), tokenize=True, add_generation_prompt=True))
+        n = len(chat_prompt_ids(tokenizer, prompt_messages_from_preference(row)))
         (kept if n < max_length else dropped).append(row)
     return kept, [str(r.get("prompt_id", r.get("source_index"))) for r in dropped]
 

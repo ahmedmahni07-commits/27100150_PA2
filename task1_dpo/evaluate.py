@@ -26,7 +26,7 @@ import pandas as pd
 import torch
 from torch.utils.data import DataLoader
 
-from common.data import load_yaml, prompt_messages_from_preference, read_jsonl, repo_path, write_jsonl
+from common.data import chat_prompt_ids, load_yaml, prompt_messages_from_preference, read_jsonl, repo_path, write_jsonl
 from common.generation import batch_generate, response_token_logprobs, score_reward_pairs
 from common.logging_utils import save_json, set_seed
 from common.metrics import parse_word_limit, word_count, word_limit_compliance
@@ -54,7 +54,7 @@ def generation_prompts(cfg, tokenizer, n_gen):
     out = []
     for r in rows:
         msgs = prompt_messages_from_preference(r)
-        n = len(tokenizer.apply_chat_template(msgs, tokenize=True, add_generation_prompt=True))
+        n = len(chat_prompt_ids(tokenizer, msgs))
         if n <= GEN_PROMPT_MAX:
             out.append({"prompt_id": str(r["prompt_id"]), "set": "heldout", "messages": msgs})
         if len(out) >= n_gen:

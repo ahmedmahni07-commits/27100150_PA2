@@ -98,6 +98,20 @@ def render_prompt(tokenizer, messages: list[dict]) -> str:
     )
 
 
+def chat_prompt_ids(tokenizer, messages: list[dict]) -> list[int]:
+    """Token ids of the rendered chat prompt as a plain list.
+
+    Transformers 4.x returns a list from apply_chat_template(tokenize=True); Transformers 5.x
+    returns a BatchEncoding. Normalize so length checks and concatenation behave identically.
+    """
+    out = tokenizer.apply_chat_template(messages, tokenize=True, add_generation_prompt=True)
+    if hasattr(out, "keys") and "input_ids" in out:
+        out = out["input_ids"]
+    if out and isinstance(out[0], list):  # batched form
+        out = out[0]
+    return list(out)
+
+
 def encode_prompt_response(
     tokenizer,
     messages: list[dict],
@@ -112,11 +126,7 @@ def encode_prompt_response(
     from the right rather than removing prompt/question tokens.
     """
 
-    prompt_ids = tokenizer.apply_chat_template(
-        messages,
-        tokenize=True,
-        add_generation_prompt=True,
-    )
+    prompt_ids = chat_prompt_ids(tokenizer, messages)
 
     # A DPO example is meaningful only if we can condition on the prompt.
     if len(prompt_ids) >= max_length:
