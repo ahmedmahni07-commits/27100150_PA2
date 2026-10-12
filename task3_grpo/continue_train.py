@@ -144,6 +144,7 @@ def run_grpo(config_path: str, output: str | None = None, updates: int | None = 
         seq_recs, ep_stats = [], []
         for e in range(n_epochs):
             prev = torch.zeros(sum(p.numel() for p in params), device=dev)
+            any_backward = False
             loss_total, pol_total, kl_total, clip_num, ratio_num = 0.0, 0.0, 0.0, 0.0, 0.0
             for k in range(n_seq):
                 sl = slice(k, k + 1)
@@ -159,13 +160,14 @@ def run_grpo(config_path: str, output: str | None = None, updates: int | None = 
                 term = pol_k / n_seq + beta * kl_k * (Tk / T_total)
                 diag["sampled_kl"] = kl_k.detach()
                 if Tk > 0:
+                    any_backward = True
                     scaler.scale(term).backward()
                     cur = _grad_vector(params) / scaler.get_scale()
                     gk = float((cur - prev).norm())
                     prev = cur
                 else:
                     gk = 0.0
-                loss_total += float(term)
+                loss_total += float(term.detach())
                 pol_total += float(diag["policy_term"]) / n_seq
                 kl_total += float(diag["sampled_kl"]) * Tk / T_total
                 clip_num += float(diag["clip_fraction"]) * Tk
@@ -175,12 +177,17 @@ def run_grpo(config_path: str, output: str | None = None, updates: int | None = 
                                      "truncated": bool(g["truncated"][k]), "in_loss": Tk > 0,
                                      "reward": float(raw[k]), "advantage": float(adv[k]), "grad_norm": gk,
                                      "token_weight": (abs(float(adv[k])) / (Tk if loss_type == "grpo" else Lmax)) if Tk > 0 else 0.0})
-            scaler.unscale_(opt)
-            gn = float(torch.nn.utils.clip_grad_norm_(params, float(cfg["max_grad_norm"])))
-            scaler.step(opt)
-            scaler.update()
+            if any_backward:
+                scaler.unscale_(opt)
+                gn = float(torch.nn.utils.clip_grad_norm_(params, float(cfg["max_grad_norm"])))
+                scaler.step(opt)
+                scaler.update()
+            else:
+                # Every completion hit the cap and was masked out (mask_truncated_completions):
+                # there is no loss term, so this update makes no parameter change.
+                gn = 0.0
             opt.zero_grad(set_to_none=True)
-            ep_stats.append({"loss": loss_total, "policy_loss": pol_total, "kl_term": kl_total,
+            ep_stats.append({"skipped_step": not any_backward,"loss": loss_total, "policy_loss": pol_total, "kl_term": kl_total,
                              "clip_frac": clip_num / max(T_total, 1.0), "ratio_mean": ratio_num / max(T_total, 1.0),
                              "grad_norm": gn})
 
@@ -198,6 +205,7 @@ def run_grpo(config_path: str, output: str | None = None, updates: int | None = 
             "kl_term": float(np.mean([x["kl_term"] for x in ep_stats])),
             "clip_frac": float(np.mean([x["clip_frac"] for x in ep_stats])),
             "grad_norm": float(np.mean([x["grad_norm"] for x in ep_stats])),
+            "skipped_step": bool(all(x["skipped_step"] for x in ep_stats)),
             "generated_tokens_total": gen_tokens,
             "elapsed_s": time.perf_counter() - t0, "peak_vram_gb": peak_vram_gb(),
         }
@@ -213,7 +221,7 @@ def run_grpo(config_path: str, output: str | None = None, updates: int | None = 
         print(f"  upd {u+1:3d} | R {rec['reward_mean']:+.3f} | grp-std {rec['group_reward_std_mean']:.3f} | "
               f"uninf {rec['uninformative_frac']:.2f} | KL {rec['kl_token_mean']:+.4f} | H {rec['entropy']:.3f} | "
               f"L {rec['policy_loss']:+.4f} | gn {rec['grad_norm']:.2f} | len {rec['response_len']:.0f} | "
-              f"masked {rec['masked_completions']} | {rec['elapsed_s']/60:.1f} min")
+              f"masked {rec['masked_completions']}{' (step skipped: all masked)' if rec['skipped_step'] else ''} | {rec['elapsed_s']/60:.1f} min")
 
     policy.save_pretrained(str(out))
     tok.save_pretrained(str(out))
