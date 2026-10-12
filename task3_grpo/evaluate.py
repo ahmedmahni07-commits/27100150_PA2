@@ -1,20 +1,22 @@
+"""Common held-out evaluation for GRPO conditions.
+
+Uses exactly the PPO protocol (task2_ppo.evaluate): the same first 64 eval-pool prompts, one sampled
+response each, the course decoding and seed, and the same 768-token cap as the PPO evaluation, so
+PPO and GRPO held-out numbers are directly comparable. GRPO has no missing-EOS penalty, so
+reward_effective == reward_raw here; truncation is reported separately.
+Outputs results/task3_grpo/eval/<name>/{summary.json, generations.jsonl}.
+"""
 from __future__ import annotations
 
 import argparse
 
-from common.data import load_yaml, read_jsonl
-from common.models import load_policy, load_reward_model, load_tokenizer
+from task2_ppo.evaluate import evaluate as _evaluate
+
+EVAL_CAP = 768
 
 
-def load_evaluation_bundle(config_path: str, adapter: str):
-    cfg = load_yaml(config_path)
-    return {
-        "cfg": cfg,
-        "rows": read_jsonl(cfg["paths"]["rl_prompt_eval"]),
-        "tokenizer": load_tokenizer(cfg["base_model"]),
-        "policy": load_policy(cfg, adapter_path=adapter, trainable=False),
-        "reward": load_reward_model(cfg),
-    }
+def evaluate(config_path, adapter, name, n_prompts=64):
+    return _evaluate(config_path, adapter, name, n_prompts=n_prompts, max_new_tokens=EVAL_CAP)
 
 
 def main():
@@ -22,11 +24,9 @@ def main():
     ap.add_argument("--config", default="configs/grpo.yaml")
     ap.add_argument("--adapter", required=True)
     ap.add_argument("--name", default="standard")
+    ap.add_argument("--n-prompts", type=int, default=64)
     args = ap.parse_args()
-    load_evaluation_bundle(args.config, args.adapter)
-    raise NotImplementedError(
-        "TODO(student): implement the common held-out GRPO evaluation and save the required metrics/examples."
-    )
+    evaluate(args.config, args.adapter, args.name, args.n_prompts)
 
 
 if __name__ == "__main__":

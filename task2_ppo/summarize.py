@@ -72,6 +72,7 @@ def main():
     md = ["# Task 2 qualitative candidates (you judge quality; reward is only the RM's opinion)\n"]
     md += compare(res, "midpoint", "standard")
     md += compare(res, "fork_eps0.2_kl0.2", "fork_eps0.2_kl0")
+    md += compare(res, "midpoint", "fork_eps0.5_kl0.1")
     (res / "qualitative_candidates.md").write_text("\n".join(md), encoding="utf-8")
     print("wrote", res / "qualitative_candidates.md")
 

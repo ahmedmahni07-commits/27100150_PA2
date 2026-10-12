@@ -90,6 +90,77 @@ Implementation choices (shared helpers in `common/rl.py`):
   midpoint policy takes `ppo_epochs` full-batch steps on that fixed batch; clip/affected fractions and surrogates
   are measured after every pass, including pass 0 (cache-consistency check).
 
+### Task 2 supplementary stress test (configuration fixed before running)
+
+The released fork budget never activates clipping (max |ratio - 1| ~ 0.03 on every update) and keeps KL drift at
+~1e-5, so the epsilon and beta_KL comparisons are uninformative under it. `configs/ppo_supp.yaml` is identical except
+policy lr x10 (3e-5), 4 PPO epochs, 2 prompts per update, and 128 evaluation prompts, so that each update is large
+enough for clipping and KL pressure to act. Its results (`results/task2_ppo_supp/`) are a supplement to, not a
+replacement for, the required results.
+
+```bash
+python -m task2_ppo.evaluate --config configs/ppo_supp.yaml --adapter checkpoints/ppo_midpoint_policy --name midpoint --n-prompts 128
+python -m task2_ppo.analyze_clipping --config configs/ppo_supp.yaml --skip-cached --n-prompts 128
+python -m task2_ppo.ablate_kl --config configs/ppo_supp.yaml --n-prompts 128
+python -m task2_ppo.summarize --config configs/ppo_supp.yaml
+```
+
+## Task 3 – GRPO: exact commands
+
+```bash
+python -m task3_grpo.evaluate --config configs/grpo.yaml --adapter checkpoints/grpo_midpoint_policy --name midpoint
+python -m task3_grpo.continue_train --config configs/grpo.yaml --run-name standard          # Step 1 (20 updates)
+python -m task3_grpo.evaluate --config configs/grpo.yaml --adapter outputs/task3_grpo/standard --name standard
+python -m task3_grpo.analyze_group_size --config configs/grpo.yaml                         # Step 2 (CPU, cache only)
+python -m task3_grpo.compare_normalization --config configs/grpo.yaml                      # Step 3 (grpo vs dr_grpo forks)
+python -m task3_grpo.summarize --config configs/grpo.yaml
+```
+
+* **Loop.** Same seeded prompt order and prompt filter as PPO; K=4 completions per prompt (cap 512); RM score as reward;
+  per-prompt group-relative advantages (corrected helper); completions that hit the cap without EOS are masked out of
+  the loss but kept in their group's statistics; one pass of the corrected clipped loss + beta*KL (k3 estimator of
+  the helper). Uninformative group = reward std <= 1e-6 (the helper's eps).
+* **Per-completion backward.** Each completion's exact share of `grpo_policy_loss` is back-propagated separately (sum
+  verified equal to the batch loss and gradient in `tests/test_objectives.py`), so the gradient norm contributed by
+  every completion is logged with its length (`sequence_log.jsonl`) - the length-conditioned statistic of Step 3.
+* **Evaluation.** The PPO protocol (`task2_ppo.evaluate`): same 64 held-out prompts, same seed/decoding, 768-token cap.
+* **Group-size study.** The 24 x 8 cache is split into disjoint groups of K within each prompt (all 192 generations used
+  for every K); metrics are averaged over 200 seeded random within-prompt partitions. Difficulty bins = terciles of a
+  prompt's mean cached reward (hard = lowest).
+
+## Task 4 – Safety: exact commands
+
+```bash
+python -m task4_safety.generate_responses --config configs/feedback.yaml   # greedy, 256 tokens, SFT/DPO/PPO/GRPO standard
+python -m task4_safety.judge_responses --config configs/feedback.yaml      # fixed 3B judge, resumable
+python -m task4_safety.make_audit_sheet --config configs/feedback.yaml     # fixed 60 IDs + blind labelling sheet
+# fill results/task4_safety/manual_audit_sheet.csv (manual_label column) by hand, then:
+python -m task4_safety.evaluate_safety --config configs/feedback.yaml
+```
+
+* Policies are fixed by `configs/feedback.yaml` (no ablation checkpoints). One greedy response per prompt, CSV order.
+* Judge: the supplied prompt and parser; responses are judged in left-padded batches of 8 (`--batch-size 1` uses the
+  supplied `judge_one` exactly).
+* Audit: the course's fixed 60 IDs (30 SAFE + 30 UNSAFE, seed 6304). Identical responses from different policies are
+  labelled once and the label applied to each; the sheet is shuffled and contains no AI labels.
+* Rates as in `manifests/source_v2_task4_safety_judge_spec.json`, plus ambiguous rate and class-mismatch rate.
+
+## Task 5 – RLVR vs RLAIF: exact commands
+
+```bash
+python -m task5_feedback.evaluate_math --config configs/feedback.yaml --dataset gsm        # Step 1
+python -m task5_feedback.score_perturbations --config configs/feedback.yaml                # Step 2
+python -m task5_feedback.evaluate_math --config configs/feedback.yaml --dataset transfer   # Step 3
+python -m task5_feedback.compare_feedback --config configs/feedback.yaml
+```
+
+* One greedy response per problem (cap 512) for SFT, RLVR and RLAIF; exact accuracy and format compliance from the
+  supplied verifier; pairwise win rate vs SFT with the supplied judge (win 1 / tie 0.5 / loss 0; responses identical to
+  SFT counted as ties without a judge call and reported separately).
+* Diagnostics: four controlled pairs vs `clean_correct` (reasoning, outcome, filler, distractor); the judge is asked in
+  both presentation orders (0.5 each) and its order-consistency is reported; S_reason / S_outcome as in the manual.
+  The direct-RLAIF group reward of each variant (`group_rewards` over the 5 variants) is also reported.
+
 ## Attribution
 
 Code was written with assistance from an LLM coding assistant (Claude); I reviewed and am responsible for

@@ -69,6 +69,36 @@ def check_grpo():
     print("GRPO ok: advantages", adv.tolist())
 
 
+def check_grpo_decomposition():
+    """The per-completion backward used in task3_grpo.continue_train must equal the batch loss."""
+    from common.rl import masked_mean
+    torch.manual_seed(0)
+    n, T, eps, beta, L = 4, 6, 0.2, 0.1, 6
+    old = -torch.rand(n, T)
+    ref = old + 0.05 * torch.randn(n, T)
+    adv = torch.randn(n)
+    mask = torch.ones(n, T)
+    mask[1, 4:] = 0
+    mask[3] = 0  # a truncated completion masked from the loss
+    for lt in ("grpo", "dr_grpo"):
+        new = (old + 0.1 * torch.randn(n, T)).requires_grad_(True)
+        full, _ = grpo_policy_loss(new, old, adv, mask, ref, eps, beta, loss_type=lt, max_completion_length=L)
+        g_full, = torch.autograd.grad(full, new)
+        new2 = new.detach().clone().requires_grad_(True)
+        total = 0.0
+        T_total = mask.sum()
+        for k in range(n):
+            sl = slice(k, k + 1)
+            pol_k, _ = grpo_policy_loss(new2[sl], old[sl], adv[sl], mask[sl], ref[sl], eps, 0.0, loss_type=lt, max_completion_length=L)
+            lr_ = ref[sl] - new2[sl]
+            kl_k = masked_mean(torch.exp(lr_) - lr_ - 1.0, mask[sl])
+            total = total + pol_k / n + beta * kl_k * (mask[k].sum() / T_total)
+        g_parts, = torch.autograd.grad(total, new2)
+        assert torch.allclose(full, total, atol=1e-6), (lt, full, total)
+        assert torch.allclose(g_full, g_parts, atol=1e-6), lt
+    print("GRPO per-completion decomposition ok (grpo and dr_grpo)")
+
+
 def check_versions():
     import transformers, peft
     assert transformers.__version__ == "4.57.1", (
@@ -82,4 +112,5 @@ if __name__ == "__main__":
     check_dpo()
     check_ppo()
     check_grpo()
+    check_grpo_decomposition()
     print("All objective checks passed.")

@@ -1,0 +1,41 @@
+base_config: configs/base.yaml
+
+# SUPPLEMENTARY stress-test configuration (Task 2), fixed before running.
+# Purpose: the released fork budget never activates clipping (max |ratio-1| ~ 0.03 < eps=0.05) and
+# keeps KL drift ~1e-5, so neither control can be studied. This configuration increases the size of
+# each policy update so that both mechanisms are actually exercised:
+#   policy_learning_rate 3e-6 -> 3e-5 (x10), ppo_epochs 2 -> 4, prompts_per_update 1 -> 2,
+#   held-out evaluation on 128 prompts instead of 64.
+# Everything else (midpoint, critic, reward, prompts order, decoding, caps, eps/beta grids) is identical.
+# Results are reported as a supplement next to, not instead of, the required released-config results.
+updates: 20
+fork_updates: 8
+prompts_per_update: 2
+ppo_epochs: 4
+
+policy_learning_rate: 3.0e-5
+value_lora_learning_rate: 1.0e-4
+value_head_learning_rate: 3.0e-4
+value_train_mode: lora_head
+
+clip_epsilon: 0.20
+clip_values: [0.05, 0.20, 0.50]
+kl_beta: 0.10
+kl_values: [0.0, 0.10, 0.20]
+
+gamma: 1.0
+gae_lambda: 0.95
+value_coef: 0.50
+missing_eos_penalty: 1.0
+
+max_prompt_length: 256
+# Instructor midpoint training used this operational budget. The supplied midpoint has a
+# documented long-tail termination limitation; use the larger cap for frozen evaluation.
+max_response_length: 512
+eval_max_response_length: 768
+reward_max_length: 1280
+max_grad_norm: 1.0
+
+output: outputs/task2_ppo_supp/standard
+results_dir: results/task2_ppo_supp
+cached_rollouts: cached/ppo_rollout.pt

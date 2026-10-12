@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import argparse
+import time
+
 import pandas as pd
 
-from common.data import load_yaml, repo_path
+from common.data import load_yaml, repo_path, write_jsonl
+from common.logging_utils import save_json
 from common.generation import batch_generate
-from common.models import load_policy, load_tokenizer
+from common.models import clear_gpu, load_policy, load_tokenizer
 
 
 def policy_specs(cfg):
@@ -43,7 +46,7 @@ def generate_for_policy(cfg, policy_name: str, batch_size: int = 4):
             top_p=1.0,
             do_sample=False,
         )
-        for (_, row), response, n_tok in zip(chunk.iterrows(), gen["responses"], gen["response_lengths"]):
+        for (_, row), response, n_tok, trunc in zip(chunk.iterrows(), gen["responses"], gen["response_lengths"], gen["truncated"]):
             records.append({
                 "xstest_id": int(row["xstest_id"]),
                 "policy": policy_name,
@@ -52,20 +55,52 @@ def generate_for_policy(cfg, policy_name: str, batch_size: int = 4):
                 "type": str(row["type"]),
                 "response": response,
                 "response_tokens": int(n_tok),
+                "truncated": bool(trunc),
             })
+        print(f"    [{policy_name}] {min(start + batch_size, len(df))}/{len(df)}")
+    clear_gpu(model)
     return records
 
 
 def main():
+    """Generate one greedy response per XSTest prompt for each frozen policy, in the fixed CSV order.
+
+    Writes results/task4_safety/generated_<policy>.jsonl (skipped if it already exists, so the
+    script can be resumed). Decoding is deterministic and identical for every policy.
+    """
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", default="configs/feedback.yaml")
+    ap.add_argument("--policies", nargs="*", help="subset of sft dpo ppo grpo (default: all)")
+    ap.add_argument("--batch-size", type=int, default=8)
+    ap.add_argument("--force", action="store_true")
     args = ap.parse_args()
     cfg = load_yaml(args.config)
     print("Policies:", list(policy_specs(cfg)))
     print("XSTest rows:", len(load_xstest(cfg)))
-    raise NotImplementedError(
-        "TODO(student): call generate_for_policy for SFT/DPO/PPO/GRPO, save common deterministic responses, and preserve the fixed prompt order."
-    )
+    out = repo_path(cfg["results_dir"]) / "task4_safety"
+    out.mkdir(parents=True, exist_ok=True)
+    meta = {"decoding": "greedy (do_sample=False)", "max_new_tokens": int(cfg["safety_max_new_tokens"]),
+            "max_prompt_length": 256, "batch_size": args.batch_size, "policies": {}}
+    for name in (args.policies or list(policy_specs(cfg))):
+        path = out / f"generated_{name}.jsonl"
+        if path.exists() and not args.force:
+            print(f"[{name}] exists, skipping ({path})")
+            continue
+        adapter = policy_specs(cfg)[name]
+        if adapter is not None and not (repo_path(adapter) / "adapter_config.json").exists():
+            raise FileNotFoundError(f"{name}: adapter {adapter} not found - train that task's standard run first")
+        t0 = time.perf_counter()
+        recs = generate_for_policy(cfg, name, batch_size=args.batch_size)
+        write_jsonl(path, recs)
+        meta["policies"][name] = {"adapter": adapter, "n": len(recs), "seconds": time.perf_counter() - t0}
+        print(f"[{name}] wrote {len(recs)} responses -> {path}")
+    prev = out / "generation_meta.json"
+    if prev.exists():
+        import json
+        old = json.loads(prev.read_text())
+        old.get("policies", {}).update(meta["policies"])
+        meta["policies"] = old.get("policies", meta["policies"])
+    save_json(prev, meta)
 
 
 if __name__ == "__main__":
