@@ -28,14 +28,17 @@ python -m task1_dpo.evaluate --config configs/dpo.yaml --adapter outputs/task1_d
 python -m task1_dpo.ablate_beta --config configs/dpo.yaml                         # Step 2 (beta forks + table)
 python -m task1_dpo.analyze_length --config configs/dpo.yaml                      # Step 3 (length study)
 python -m task1_dpo.qualitative --config configs/dpo.yaml                         # candidate examples
+python -m task1_dpo.truncation_stats --config configs/dpo.yaml                    # length-handling counts (CPU)
 ```
 
 Implementation choices (identical for every Task 1 condition):
 
-* **Over-long prompts.** The course `encode_prompt_response` (3 Oct update) keeps prompts intact and raises
-  if a prompt alone does not fit in `max_sequence_length=768`. Such pairs are excluded up-front by
-  `task1_dpo.train.filter_fitting_rows`; the excluded `prompt_id`s are saved in each run's
-  `results/task1_dpo/train/<run>/run_config.json` and each eval `summary.json`.
+* **Over-length pairs (prompt + response > 768 tokens).** Strategy: *prompt preservation + response truncation,
+  with filtering* — the course patch of 3 Oct (`common.data.encode_prompt_response`) keeps the prompt whole and
+  right-truncates the response (keeping EOS); pairs whose prompt alone is >= 768 tokens cannot be kept that way and
+  are excluded by `task1_dpo.train.filter_fitting_rows`. The same rule is applied to every DPO training and
+  evaluation run. Excluded IDs: `results/task1_dpo/train/<run>/run_config.json` and each eval `summary.json`;
+  counts of excluded / truncated pairs per file and stratum: `results/task1_dpo/truncation_stats.json`.
 * **Training.** Fresh LoRA (configs/base.yaml) on Qwen2.5-1.5B-Instruct; the frozen reference is the same
   network with the adapter disabled. Shuffle order fixed with `torch.Generator().manual_seed(seed)`.
   Batch 2 x grad-accum 8, AdamW, grad-norm clip 1.0, fp16 base with fp32 LoRA weights and a GradScaler.

@@ -1,0 +1,112 @@
+{
+  "max_sequence_length": 768,
+  "files": {
+    "dpo_standard_train": {
+      "path": "data/dpo_standard_train.jsonl",
+      "overall": {
+        "total": 1500,
+        "kept": 1446,
+        "kept_with_any_truncation": 232,
+        "only_chosen_truncated": 99,
+        "only_rejected_truncated": 60,
+        "both_truncated": 73,
+        "excluded_prompt_too_long": 54
+      }
+    },
+    "dpo_standard_eval": {
+      "path": "data/dpo_standard_eval.jsonl",
+      "overall": {
+        "total": 300,
+        "kept": 290,
+        "kept_with_any_truncation": 50,
+        "only_chosen_truncated": 19,
+        "only_rejected_truncated": 14,
+        "both_truncated": 17,
+        "excluded_prompt_too_long": 10
+      }
+    },
+    "dpo_length_train": {
+      "path": "data/dpo_length_balanced_train.jsonl",
+      "overall": {
+        "total": 1500,
+        "kept": 1442,
+        "kept_with_any_truncation": 42,
+        "only_chosen_truncated": 9,
+        "only_rejected_truncated": 10,
+        "both_truncated": 23,
+        "excluded_prompt_too_long": 58
+      },
+      "by_stratum": {
+        "rejected_longer": {
+          "total": 500,
+          "kept": 482,
+          "kept_with_any_truncation": 16,
+          "only_chosen_truncated": 0,
+          "only_rejected_truncated": 10,
+          "both_truncated": 6,
+          "excluded_prompt_too_long": 18
+        },
+        "preferred_longer": {
+          "total": 500,
+          "excluded_prompt_too_long": 22,
+          "kept": 478,
+          "kept_with_any_truncation": 16,
+          "only_chosen_truncated": 9,
+          "only_rejected_truncated": 0,
+          "both_truncated": 7
+        },
+        "length_matched": {
+          "total": 500,
+          "kept": 482,
+          "kept_with_any_truncation": 10,
+          "only_chosen_truncated": 0,
+          "only_rejected_truncated": 0,
+          "both_truncated": 10,
+          "excluded_prompt_too_long": 18
+        }
+      }
+    },
+    "dpo_length_eval": {
+      "path": "data/dpo_length_stratified_eval.jsonl",
+      "overall": {
+        "total": 246,
+        "kept": 237,
+        "kept_with_any_truncation": 7,
+        "only_chosen_truncated": 1,
+        "only_rejected_truncated": 3,
+        "both_truncated": 3,
+        "excluded_prompt_too_long": 9
+      },
+      "by_stratum": {
+        "rejected_longer": {
+          "total": 82,
+          "kept": 79,
+          "kept_with_any_truncation": 3,
+          "only_chosen_truncated": 0,
+          "only_rejected_truncated": 3,
+          "both_truncated": 0,
+          "excluded_prompt_too_long": 3
+        },
+        "preferred_longer": {
+          "total": 82,
+          "kept": 78,
+          "kept_with_any_truncation": 4,
+          "only_chosen_truncated": 1,
+          "only_rejected_truncated": 0,
+          "both_truncated": 3,
+          "excluded_prompt_too_long": 4
+        },
+        "length_matched": {
+          "total": 82,
+          "kept": 80,
+          "kept_with_any_truncation": 0,
+          "only_chosen_truncated": 0,
+          "only_rejected_truncated": 0,
+          "both_truncated": 0,
+          "excluded_prompt_too_long": 2
+        }
+      }
+    }
+  },
+  "tokenizer": "Qwen/Qwen2.5-1.5B-Instruct"
+}
