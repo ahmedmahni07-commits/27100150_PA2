@@ -1,0 +1,7 @@
+{
+  "judge_model": "Qwen/Qwen2.5-3B-Instruct",
+  "temperature": 0.0,
+  "max_new_tokens": 64,
+  "batch_size": 8,
+  "quantized_4bit": true
+}

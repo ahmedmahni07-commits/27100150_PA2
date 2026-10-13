@@ -1,0 +1,28 @@
+{
+  "decoding": "greedy (do_sample=False)",
+  "max_new_tokens": 256,
+  "max_prompt_length": 256,
+  "batch_size": 8,
+  "policies": {
+    "sft": {
+      "adapter": null,
+      "n": 450,
+      "seconds": 505.46852690800006
+    },
+    "dpo": {
+      "adapter": "outputs/task1_dpo/standard",
+      "n": 450,
+      "seconds": 656.2775167789996
+    },
+    "ppo": {
+      "adapter": "outputs/task2_ppo/standard",
+      "n": 450,
+      "seconds": 649.2482867079998
+    },
+    "grpo": {
+      "adapter": "outputs/task3_grpo/standard",
+      "n": 450,
+      "seconds": 652.4029236169999
+    }
+  }
+}

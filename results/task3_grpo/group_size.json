@@ -1,0 +1,114 @@
+{
+  "cache": "cached/grpo_k_cache.jsonl",
+  "n_prompts": 24,
+  "generations": 192,
+  "std_tolerance": 1e-06,
+  "n_random_partitions": 200,
+  "seed": 6304,
+  "difficulty_rule": "tercile of per-prompt mean reward over its 8 cached completions (hard = lowest)",
+  "difficulty_cutpoints": [
+    1.3125813802083333,
+    2.4212239583333335
+  ],
+  "prompt_difficulty": {
+    "124": {
+      "mean_reward": 2.375,
+      "bin": "medium"
+    },
+    "671": {
+      "mean_reward": -1.45556640625,
+      "bin": "hard"
+    },
+    "510": {
+      "mean_reward": 1.86572265625,
+      "bin": "medium"
+    },
+    "981": {
+      "mean_reward": 2.2646484375,
+      "bin": "medium"
+    },
+    "175": {
+      "mean_reward": 0.7420654296875,
+      "bin": "hard"
+    },
+    "185": {
+      "mean_reward": 2.4599609375,
+      "bin": "easy"
+    },
+    "953": {
+      "mean_reward": 0.73388671875,
+      "bin": "hard"
+    },
+    "873": {
+      "mean_reward": 2.1845703125,
+      "bin": "medium"
+    },
+    "796": {
+      "mean_reward": 1.81658935546875,
+      "bin": "medium"
+    },
+    "263": {
+      "mean_reward": 2.4296875,
+      "bin": "easy"
+    },
+    "507": {
+      "mean_reward": 3.220703125,
+      "bin": "easy"
+    },
+    "961": {
+      "mean_reward": -0.1944580078125,
+      "bin": "hard"
+    },
+    "280": {
+      "mean_reward": 1.2734375,
+      "bin": "hard"
+    },
+    "936": {
+      "mean_reward": 0.8939208984375,
+      "bin": "hard"
+    },
+    "254": {
+      "mean_reward": 1.3321533203125,
+      "bin": "medium"
+    },
+    "463": {
+      "mean_reward": 3.00390625,
+      "bin": "easy"
+    },
+    "436": {
+      "mean_reward": 2.212890625,
+      "bin": "medium"
+    },
+    "942": {
+      "mean_reward": 2.6875,
+      "bin": "easy"
+    },
+    "184": {
+      "mean_reward": 2.966796875,
+      "bin": "easy"
+    },
+    "922": {
+      "mean_reward": 2.4169921875,
+      "bin": "medium"
+    },
+    "755": {
+      "mean_reward": 3.072265625,
+      "bin": "easy"
+    },
+    "457": {
+      "mean_reward": -0.85198974609375,
+      "bin": "hard"
+    },
+    "832": {
+      "mean_reward": 2.65625,
+      "bin": "easy"
+    },
+    "495": {
+      "mean_reward": -1.42041015625,
+      "bin": "hard"
+    }
+  },
+  "reward_mean": 1.6119384765625,
+  "reward_std": 1.5571501403362402,
+  "exact_duplicate_rewards_within_prompt": 14
+}

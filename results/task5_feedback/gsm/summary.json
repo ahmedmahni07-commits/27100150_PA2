@@ -1,0 +1,84 @@
+{
+  "dataset": "gsm",
+  "file": "data/gsm8k_eval.jsonl",
+  "n": 300,
+  "decoding": "greedy",
+  "max_new_tokens": 512,
+  "judge_model": "Qwen/Qwen2.5-3B-Instruct",
+  "verifier_microseconds_per_call": 3.949810000752526,
+  "policies": {
+    "sft": {
+      "exact_accuracy": 0.2833333333333333,
+      "exact_accuracy_se": 0.026059845940064916,
+      "format_compliance": 0.35,
+      "length_tokens": {
+        "mean": 274.33,
+        "std": 84.71163497418758,
+        "iqr": 114.75,
+        "median": 259.5
+      },
+      "truncated_frac": 0.016666666666666666,
+      "generation_seconds": null
+    },
+    "rlvr": {
+      "exact_accuracy": 0.2866666666666667,
+      "exact_accuracy_se": 0.026151660126798607,
+      "format_compliance": 0.36,
+      "length_tokens": {
+        "mean": 275.87666666666667,
+        "std": 86.29894624050877,
+        "iqr": 115.0,
+        "median": 261.0
+      },
+      "truncated_frac": 0.02,
+      "generation_seconds": null,
+      "win_rate_vs_sft": 0.5033333333333333,
+      "win_rate_vs_sft_se": 0.004717985070869592,
+      "wins": 5,
+      "losses": 3,
+      "ties": 292,
+      "ties_identical_to_sft": 235,
+      "judge_calls": 65,
+      "judge_seconds_per_call": 6.415979993247534e-05,
+      "verifier_judge_agreement": {
+        "n_verifier_decisive": 13,
+        "judge_agrees_with_verifier": 0.07692307692307693,
+        "judge_contradicts_verifier": 0.07692307692307693,
+        "judge_tie_when_verifier_decisive": 0.8461538461538461,
+        "n_verifier_tie": 287,
+        "judge_tie_when_verifier_tie": 0.9790940766550522,
+        "judge_tie_when_verifier_tie_excl_identical": 0.8846153846153846
+      }
+    },
+    "rlaif": {
+      "exact_accuracy": 0.2866666666666667,
+      "exact_accuracy_se": 0.026151660126798607,
+      "format_compliance": 0.36,
+      "length_tokens": {
+        "mean": 275.45,
+        "std": 88.10834712632699,
+        "iqr": 120.25,
+        "median": 260.5
+      },
+      "truncated_frac": 0.023333333333333334,
+      "generation_seconds": null,
+      "win_rate_vs_sft": 0.495,
+      "win_rate_vs_sft_se": 0.004407478189518512,
+      "wins": 2,
+      "losses": 5,
+      "ties": 293,
+      "ties_identical_to_sft": 245,
+      "judge_calls": 55,
+      "judge_seconds_per_call": 5.35250545495232e-05,
+      "verifier_judge_agreement": {
+        "n_verifier_decisive": 7,
+        "judge_agrees_with_verifier": 0.0,
+        "judge_contradicts_verifier": 0.14285714285714285,
+        "judge_tie_when_verifier_decisive": 0.8571428571428571,
+        "n_verifier_tie": 293,
+        "judge_tie_when_verifier_tie": 0.9795221843003413,
+        "judge_tie_when_verifier_tie_excl_identical": 0.875
+      }
+    }
+  }
+}
