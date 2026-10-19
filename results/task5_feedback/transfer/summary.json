@@ -1,0 +1,84 @@
+{
+  "dataset": "transfer",
+  "file": "data/math_transfer_eval.jsonl",
+  "n": 100,
+  "decoding": "greedy",
+  "max_new_tokens": 512,
+  "judge_model": "Qwen/Qwen2.5-3B-Instruct",
+  "verifier_microseconds_per_call": 3.5985599993182404,
+  "policies": {
+    "sft": {
+      "exact_accuracy": 0.44,
+      "exact_accuracy_se": 0.04988876515698589,
+      "format_compliance": 0.57,
+      "length_tokens": {
+        "mean": 163.96,
+        "std": 71.74579012039662,
+        "iqr": 79.0,
+        "median": 143.0
+      },
+      "truncated_frac": 0.0,
+      "generation_seconds": 147.03183713199996
+    },
+    "rlvr": {
+      "exact_accuracy": 0.46,
+      "exact_accuracy_se": 0.05009082659620331,
+      "format_compliance": 0.59,
+      "length_tokens": {
+        "mean": 164.07,
+        "std": 72.54050661526978,
+        "iqr": 79.25,
+        "median": 140.0
+      },
+      "truncated_frac": 0.0,
+      "generation_seconds": 187.80731847799996,
+      "win_rate_vs_sft": 0.5,
+      "win_rate_vs_sft_se": 0.007106690545187015,
+      "wins": 1,
+      "losses": 1,
+      "ties": 98,
+      "ties_identical_to_sft": 91,
+      "judge_calls": 9,
+      "judge_seconds_per_call": 0.44085997888883965,
+      "verifier_judge_agreement": {
+        "n_verifier_decisive": 4,
+        "judge_agrees_with_verifier": 0.25,
+        "judge_contradicts_verifier": 0.0,
+        "judge_tie_when_verifier_decisive": 0.75,
+        "n_verifier_tie": 96,
+        "judge_tie_when_verifier_tie": 0.9895833333333334,
+        "judge_tie_when_verifier_tie_excl_identical": 0.8
+      }
+    },
+    "rlaif": {
+      "exact_accuracy": 0.44,
+      "exact_accuracy_se": 0.04988876515698589,
+      "format_compliance": 0.57,
+      "length_tokens": {
+        "mean": 162.98,
+        "std": 70.5209160462341,
+        "iqr": 79.25,
+        "median": 140.0
+      },
+      "truncated_frac": 0.0,
+      "generation_seconds": 181.84411091799996,
+      "win_rate_vs_sft": 0.505,
+      "win_rate_vs_sft_se": 0.008689364217539193,
+      "wins": 2,
+      "losses": 1,
+      "ties": 97,
+      "ties_identical_to_sft": 92,
+      "judge_calls": 8,
+      "judge_seconds_per_call": 0.16526845100000287,
+      "verifier_judge_agreement": {
+        "n_verifier_decisive": 2,
+        "judge_agrees_with_verifier": 0.5,
+        "judge_contradicts_verifier": 0.0,
+        "judge_tie_when_verifier_decisive": 0.5,
+        "n_verifier_tie": 98,
+        "judge_tie_when_verifier_tie": 0.9795918367346939,
+        "judge_tie_when_verifier_tie_excl_identical": 0.6666666666666666
+      }
+    }
+  }
+}

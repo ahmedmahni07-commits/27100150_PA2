@@ -9,7 +9,7 @@ learning_rate: 2.0e-5
 weight_decay: 0.0
 batch_size: 2
 grad_accum_steps: 8
-epochs: 5
+epochs: 5          # beta=0.1 standard run; beta forks use --epochs 3 (its epoch_3 is the matched beta=0.1 point)
 save_every_epoch: true
 short_ablation_examples: 600
 max_sequence_length: 768

@@ -1,0 +1,9 @@
+pair,mechanism,n,better_rate,tie_rate,wrong_rate,order_consistency
+reasoning,verifier,20,0.0,1.0,0.0,1.0
+reasoning,ai_judge,20,0.0,1.0,0.0,1.0
+outcome,verifier,20,1.0,0.0,0.0,1.0
+outcome,ai_judge,20,0.075,0.925,0.0,0.85
+filler,verifier,20,0.0,1.0,0.0,1.0
+filler,ai_judge,20,0.0,0.75,0.25,1.0
+distractor,verifier,20,1.0,0.0,0.0,1.0
+distractor,ai_judge,20,0.2,0.75,0.05,0.7

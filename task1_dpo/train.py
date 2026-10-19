@@ -163,7 +163,7 @@ def load_resume_point(path, model, optimizer, scaler, loader):
     return int(st["epochs_done"]), int(st["opt_step"])
 
 
-def run_training(config_path: str, run_name: str, dataset_path: str | None = None, output_path: str | None = None, beta: float | None = None, max_examples: int | None = None):
+def run_training(config_path: str, run_name: str, dataset_path: str | None = None, output_path: str | None = None, beta: float | None = None, max_examples: int | None = None, epochs: int | None = None):
     bundle = prepare_dpo_run(config_path, dataset_path, beta, max_examples)
     cfg, model, loader, optimizer = bundle["cfg"], bundle["model"], bundle["loader"], bundle["optimizer"]
     beta = bundle["beta"]
@@ -178,7 +178,7 @@ def run_training(config_path: str, run_name: str, dataset_path: str | None = Non
         log_path.unlink()
 
     accum = int(cfg["grad_accum_steps"])
-    epochs = int(cfg.get("epochs", 1))
+    epochs = int(cfg.get("epochs", 1) if epochs is None else epochs)
     max_grad_norm = float(cfg.get("max_grad_norm", 1.0))
     device = model_device(model)
     params = trainable_parameters(model)
@@ -295,8 +295,9 @@ def main():
     ap.add_argument("--output")
     ap.add_argument("--beta", type=float)
     ap.add_argument("--max-examples", type=int)
+    ap.add_argument("--epochs", type=int, help="override the config's epoch count")
     args = ap.parse_args()
-    run_training(args.config, args.run_name, args.dataset, args.output, args.beta, args.max_examples)
+    run_training(args.config, args.run_name, args.dataset, args.output, args.beta, args.max_examples, args.epochs)
 
 
 if __name__ == "__main__":

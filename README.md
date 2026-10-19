@@ -54,16 +54,26 @@ Implementation choices (identical for every Task 1 condition):
 Outputs: `results/task1_dpo/{train,eval}/...`, `beta_summary.csv`, `length_strata.csv`,
 `length_generation.csv`, `length_dataset_stats.json`, `qualitative_candidates.md`.
 
-### Task 1 supplementary: multi-epoch DPO (not part of the fixed budget)
+### Task 1 supplementary: longer DPO budget for all three betas (not part of the fixed budget)
 
-`configs/dpo_long.yaml` is identical to `configs/dpo.yaml` except `epochs: 5` and `save_every_epoch: true`.
-It writes to `outputs/task1_dpo_long/` and `results/task1_dpo_long/`, so the graded runs are untouched.
-An interrupted run resumes from the last finished epoch (adapter, optimizer, grad-scaler and shuffle state).
+The official results remain the 1-epoch standard run and the 600-row beta forks. As a supplement, every beta
+gets the same larger budget: 3 epochs on the full 1,446-pair training set (~273 optimizer steps), otherwise the
+`configs/dpo.yaml` settings. The beta=0.1 condition is the standard run's `epoch_3` checkpoint: the learning rate
+is constant and the seed and shuffle order are fixed, so it is the same model a 3-epoch run would produce; that
+run continues to 5 epochs to show the epoch trend. Outputs go to `outputs/task1_dpo_long/` and
+`results/task1_dpo_long/`. An interrupted run resumes from its last finished epoch (adapter, optimizer,
+grad-scaler and shuffle state).
 
 ```bash
-python -m task1_dpo.train --config configs/dpo_long.yaml --run-name standard
+python -m task1_dpo.train --config configs/dpo_long.yaml --run-name standard                       # beta 0.1, 5 epochs
+for b in 0.03 0.3; do
+  python -m task1_dpo.train --config configs/dpo_long.yaml --run-name beta_$b --beta $b --epochs 3 --output outputs/task1_dpo_long/beta_$b
+done
 for k in 1 3 5; do
   python -m task1_dpo.evaluate --config configs/dpo_long.yaml --adapter outputs/task1_dpo_long/standard/epoch_$k --name epoch_$k
+done
+for b in 0.03 0.3; do
+  python -m task1_dpo.evaluate --config configs/dpo_long.yaml --adapter outputs/task1_dpo_long/beta_$b/epoch_3 --name beta_${b}_epoch_3 --beta $b
 done
 python -m task1_dpo.summarize_epochs --config configs/dpo_long.yaml   # -> results/task1_dpo_long/epoch_summary.csv
 ```
