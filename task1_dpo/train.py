@@ -133,6 +133,36 @@ def prepare_dpo_run(config_path: str, dataset_path: str | None = None, beta: flo
     }
 
 
+def save_epoch_checkpoint(path, model, tokenizer, optimizer, scaler, loader, epochs_done, opt_step):
+    """Adapter after `epochs_done` epochs (evaluable like any adapter) + state needed to resume.
+
+    The sampler generator state is saved so a resumed run continues with exactly the shuffle
+    order the uninterrupted run would have used."""
+    path.mkdir(parents=True, exist_ok=True)
+    model.save_pretrained(str(path))
+    tokenizer.save_pretrained(str(path))
+    torch.save({"epochs_done": epochs_done, "opt_step": opt_step,
+                "optimizer": optimizer.state_dict(), "scaler": scaler.state_dict(),
+                "sampler_generator": loader.sampler.generator.get_state()}, path / "trainer_state.pt")
+    print(f"  saved epoch {epochs_done} checkpoint -> {path}")
+
+
+def find_resume_point(output):
+    done = [d for d in output.glob("epoch_*") if (d / "trainer_state.pt").exists()]
+    return max(done, key=lambda d: int(d.name.split("_")[1])) if done else None
+
+
+def load_resume_point(path, model, optimizer, scaler, loader):
+    from peft import set_peft_model_state_dict
+    from safetensors.torch import load_file
+    set_peft_model_state_dict(model, load_file(str(path / "adapter_model.safetensors")))
+    st = torch.load(path / "trainer_state.pt", map_location="cpu", weights_only=False)
+    optimizer.load_state_dict(st["optimizer"])
+    scaler.load_state_dict(st["scaler"])
+    loader.sampler.generator.set_state(st["sampler_generator"])
+    return int(st["epochs_done"]), int(st["opt_step"])
+
+
 def run_training(config_path: str, run_name: str, dataset_path: str | None = None, output_path: str | None = None, beta: float | None = None, max_examples: int | None = None):
     bundle = prepare_dpo_run(config_path, dataset_path, beta, max_examples)
     cfg, model, loader, optimizer = bundle["cfg"], bundle["model"], bundle["loader"], bundle["optimizer"]
@@ -142,7 +172,9 @@ def run_training(config_path: str, run_name: str, dataset_path: str | None = Non
     results_dir = repo_path(cfg["results_dir"]) / "train" / run_name
     results_dir.mkdir(parents=True, exist_ok=True)
     log_path = results_dir / "train_log.jsonl"
-    if log_path.exists():
+    save_every_epoch = bool(cfg.get("save_every_epoch", False))
+    resume = find_resume_point(output) if save_every_epoch else None
+    if log_path.exists() and resume is None:
         log_path.unlink()
 
     accum = int(cfg["grad_accum_steps"])
@@ -186,8 +218,15 @@ def run_training(config_path: str, run_name: str, dataset_path: str | None = Non
     window = []  # per-micro-batch stats accumulated over one optimizer step
     opt_step = 0
     n_micro = len(loader)
+    start_epoch = 0
+    if resume is not None:
+        start_epoch, opt_step = load_resume_point(resume, model, optimizer, scaler, loader)
+        print(f"[DPO {run_name}] resumed after epoch {start_epoch} (opt_step {opt_step}) from {resume}")
+        if log_path.exists():  # drop log lines from a partially finished epoch that will be redone
+            keep = [l for l in log_path.read_text().splitlines() if l.strip() and json.loads(l)["epoch"] < start_epoch]
+            log_path.write_text("".join(l + "\n" for l in keep))
 
-    for epoch in range(epochs):
+    for epoch in range(start_epoch, epochs):
         for i, batch in enumerate(loader):
             batch = to_device(batch, device)
             pc, pr, rc, rr = pair_logps(model, batch)
@@ -229,6 +268,9 @@ def run_training(config_path: str, run_name: str, dataset_path: str | None = Non
                 if opt_step % 5 == 0 or last:
                     print(f"  step {opt_step:4d} | loss {rec['loss']:.4f} | acc {rec['acc']:.3f} | "
                           f"margin {rec['margin']:+.3f} | gnorm {rec['grad_norm']:.3f} | {rec['elapsed_s']/60:.1f} min")
+        if save_every_epoch:
+            save_epoch_checkpoint(output / f"epoch_{epoch + 1}", model, bundle["tokenizer"], optimizer, scaler,
+                                  loader, epoch + 1, opt_step)
 
     model.save_pretrained(str(output))
     bundle["tokenizer"].save_pretrained(str(output))

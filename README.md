@@ -54,6 +54,20 @@ Implementation choices (identical for every Task 1 condition):
 Outputs: `results/task1_dpo/{train,eval}/...`, `beta_summary.csv`, `length_strata.csv`,
 `length_generation.csv`, `length_dataset_stats.json`, `qualitative_candidates.md`.
 
+### Task 1 supplementary: multi-epoch DPO (not part of the fixed budget)
+
+`configs/dpo_long.yaml` is identical to `configs/dpo.yaml` except `epochs: 5` and `save_every_epoch: true`.
+It writes to `outputs/task1_dpo_long/` and `results/task1_dpo_long/`, so the graded runs are untouched.
+An interrupted run resumes from the last finished epoch (adapter, optimizer, grad-scaler and shuffle state).
+
+```bash
+python -m task1_dpo.train --config configs/dpo_long.yaml --run-name standard
+for k in 1 3 5; do
+  python -m task1_dpo.evaluate --config configs/dpo_long.yaml --adapter outputs/task1_dpo_long/standard/epoch_$k --name epoch_$k
+done
+python -m task1_dpo.summarize_epochs --config configs/dpo_long.yaml   # -> results/task1_dpo_long/epoch_summary.csv
+```
+
 ## Task 2 – PPO: exact commands
 
 ```bash

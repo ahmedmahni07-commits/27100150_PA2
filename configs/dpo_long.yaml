@@ -1,0 +1,20 @@
+# Supplementary (not part of the graded fixed budget): the standard DPO run trained for more
+# epochs to see what DPO does once it actually moves away from the reference.
+# Identical to configs/dpo.yaml except: epochs, per-epoch checkpoints, and separate output/results
+# folders so nothing from the graded Task 1 runs is overwritten.
+base_config: configs/base.yaml
+beta: 0.10
+betas: [0.03, 0.10, 0.30]
+learning_rate: 2.0e-5
+weight_decay: 0.0
+batch_size: 2
+grad_accum_steps: 8
+epochs: 5
+save_every_epoch: true
+short_ablation_examples: 600
+max_sequence_length: 768
+max_generation_tokens: 256
+max_grad_norm: 1.0
+standard_output: outputs/task1_dpo_long/standard
+length_output: outputs/task1_dpo_long/length_balanced
+results_dir: results/task1_dpo_long
